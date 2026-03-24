@@ -18,23 +18,15 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-pro")
 DB_SCHEMA = """
 Tables available:
 
-products (
+ai_tools (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     category TEXT NOT NULL,
-    price NUMERIC(10, 2) NOT NULL,
-    stock INT NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
+    description TEXT,
+    popularity_score INT
 );
 
-orders (
-    id SERIAL PRIMARY KEY,
-    product_id INT REFERENCES products(id),
-    quantity INT NOT NULL,
-    total_price NUMERIC(10, 2) NOT NULL,
-    order_date TIMESTAMP DEFAULT NOW(),
-    customer_name TEXT NOT NULL
-);
+Sample categories: LLM Framework, Backend, Vector DB, LLM API, ML Platform, DevOps
 """
 
 SYSTEM_PROMPT = (
