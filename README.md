@@ -153,7 +153,7 @@ Sample request body:
 
 - Project: AlloyDB AI Query Agent
 - Status: Production-ready backend with deployable frontend
-- Cloud Run URL: REPLACE_WITH_YOUR_CLOUD_RUN_URL
+- Cloud Run URL: https://alloydb-ai-query-agent-130153985798.asia-south1.run.app
 
 ### Judge-Facing Summary
 
