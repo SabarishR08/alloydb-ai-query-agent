@@ -12,19 +12,34 @@ logger = logging.getLogger(__name__)
 
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = os.getenv("DB_NAME", "postgres")
+DB_NAME = os.getenv("DB_NAME", "ai_tools_db")
 DB_USER = os.getenv("DB_USER", "postgres")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "")
+CLOUD_SQL_CONNECTION_NAME = os.getenv("CLOUD_SQL_CONNECTION_NAME", "")
+DB_SSLMODE = os.getenv("DB_SSLMODE", "prefer")
 
 
 def get_connection():
-    """Create and return a new database connection."""
+    """Create and return a new database connection.
+
+    Uses Cloud SQL Unix socket when CLOUD_SQL_CONNECTION_NAME is set,
+    otherwise uses direct host/port connection settings.
+    """
+    if CLOUD_SQL_CONNECTION_NAME:
+        return psycopg2.connect(
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            host=f"/cloudsql/{CLOUD_SQL_CONNECTION_NAME}",
+        )
+
     return psycopg2.connect(
         host=DB_HOST,
         port=DB_PORT,
         dbname=DB_NAME,
         user=DB_USER,
         password=DB_PASSWORD,
+        sslmode=DB_SSLMODE,
     )
 
 

@@ -149,3 +149,67 @@ Sample request body:
 
 - `POST /query`: accepts natural language and returns generated SQL + results
 
+## Cloud SQL + Cloud Run Deployment
+
+This path is useful for Track 3 when you want a clean managed deployment.
+
+### 1) Create and configure project
+
+```powershell
+gcloud projects create alloydb-ai-agent-2026
+gcloud config set project alloydb-ai-agent-2026
+gcloud beta billing projects link alloydb-ai-agent-2026 --billing-account=<YOUR_BILLING_ACCOUNT_ID>
+```
+
+### 2) Enable required services
+
+```powershell
+gcloud services enable run.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com aiplatform.googleapis.com sqladmin.googleapis.com
+```
+
+### 3) Create Cloud SQL (PostgreSQL)
+
+```powershell
+gcloud sql instances create ai-db-instance --database-version=POSTGRES_15 --tier=db-f1-micro --region=asia-south1 --root-password=<STRONG_DB_PASSWORD>
+gcloud sql databases create ai_tools_db --instance=ai-db-instance
+```
+
+Get instance connection name (needed by Cloud Run):
+
+```powershell
+gcloud sql instances describe ai-db-instance --format="value(connectionName)"
+```
+
+### 4) Load seed dataset into Cloud SQL
+
+Option A (interactive `psql`):
+
+```powershell
+gcloud sql connect ai-db-instance --user=postgres --database=ai_tools_db
+```
+
+Then run SQL from `data/seed.sql`.
+
+Option B (one-shot import from local terminal):
+
+```powershell
+psql "host=<PUBLIC_IP> port=5432 user=postgres password=<DB_PASSWORD> dbname=ai_tools_db sslmode=require" -f data/seed.sql
+```
+
+### 5) Deploy to Cloud Run with Cloud SQL socket
+
+```powershell
+gcloud run deploy ai-query-agent `
+	--source . `
+	--region=asia-south1 `
+	--allow-unauthenticated `
+	--add-cloudsql-instances=<PROJECT_ID>:asia-south1:ai-db-instance `
+	--set-env-vars=DB_NAME=ai_tools_db,DB_USER=postgres,DB_PASSWORD=<DB_PASSWORD>,CLOUD_SQL_CONNECTION_NAME=<PROJECT_ID>:asia-south1:ai-db-instance,GCP_PROJECT=<PROJECT_ID>,GCP_LOCATION=asia-south1,GEMINI_MODEL=gemini-1.5-flash
+```
+
+Notes:
+
+- Do not hardcode database credentials in source files.
+- Prefer Secret Manager for `DB_PASSWORD` in production.
+- The app automatically uses Cloud SQL Unix socket when `CLOUD_SQL_CONNECTION_NAME` is set.
+
