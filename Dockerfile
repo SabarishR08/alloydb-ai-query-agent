@@ -29,6 +29,7 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application source
 COPY app/ ./app/
+COPY frontend/ ./frontend/
 
 # Non-root user for security
 RUN adduser --disabled-password --gecos "" appuser

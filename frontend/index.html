@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Tools Query Engine</title>
+    <style>
+        :root {
+            --bg-1: #f5f1e8;
+            --bg-2: #dce7f7;
+            --surface: rgba(255, 255, 255, 0.78);
+            --text: #1f2937;
+            --muted: #4b5563;
+            --line: rgba(31, 41, 55, 0.14);
+            --accent: #0f766e;
+            --accent-2: #1d4ed8;
+            --danger: #b91c1c;
+            --ok: #166534;
+            --radius: 14px;
+            --shadow: 0 14px 34px rgba(17, 24, 39, 0.16);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Avenir Next", "Segoe UI", "Noto Sans", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(1200px 600px at -15% -10%, #fde68a 0%, transparent 52%),
+                radial-gradient(900px 500px at 110% 0%, #93c5fd 0%, transparent 56%),
+                linear-gradient(135deg, var(--bg-1), var(--bg-2));
+            padding: 30px 16px 48px;
+        }
+
+        .shell {
+            max-width: 1080px;
+            margin: 0 auto;
+        }
+
+        .title {
+            margin: 0;
+            font-size: clamp(1.7rem, 2.4vw, 2.4rem);
+            letter-spacing: 0.02em;
+            font-weight: 750;
+        }
+
+        .subtitle {
+            margin: 8px 0 26px;
+            color: var(--muted);
+            font-size: 0.98rem;
+        }
+
+        .panel {
+            border: 1px solid var(--line);
+            background: var(--surface);
+            backdrop-filter: blur(8px);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 18px;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            align-items: end;
+        }
+
+        .field {
+            display: grid;
+            gap: 8px;
+        }
+
+        .label {
+            font-size: 0.87rem;
+            color: var(--muted);
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            height: 44px;
+            border-radius: 10px;
+            border: 1px solid var(--line);
+            padding: 0 12px;
+            font-size: 0.97rem;
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.88);
+            outline: none;
+            transition: border-color 160ms ease, box-shadow 160ms ease;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--accent-2);
+            box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.14);
+        }
+
+        button {
+            height: 44px;
+            border: 0;
+            border-radius: 10px;
+            padding: 0 18px;
+            font-size: 0.96rem;
+            font-weight: 700;
+            color: #ffffff;
+            background: linear-gradient(120deg, var(--accent), var(--accent-2));
+            cursor: pointer;
+            transition: transform 120ms ease, filter 120ms ease;
+        }
+
+        button:hover {
+            filter: brightness(1.04);
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            filter: grayscale(0.2);
+            opacity: 0.74;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .meta {
+            margin-top: 14px;
+            display: grid;
+            gap: 10px;
+        }
+
+        .status {
+            min-height: 22px;
+            font-size: 0.95rem;
+        }
+
+        .status.loading { color: var(--accent-2); }
+        .status.error { color: var(--danger); }
+        .status.success { color: var(--ok); }
+
+        .sql {
+            margin: 0;
+            display: none;
+            border: 1px dashed var(--line);
+            background: rgba(255, 255, 255, 0.72);
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            word-break: break-word;
+            color: #111827;
+        }
+
+        .table-wrap {
+            margin-top: 14px;
+            overflow-x: auto;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 760px;
+        }
+
+        thead th {
+            text-align: left;
+            background: rgba(148, 163, 184, 0.14);
+            font-size: 0.8rem;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            color: var(--muted);
+            padding: 11px 12px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        tbody td {
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(31, 41, 55, 0.09);
+            font-size: 0.93rem;
+            vertical-align: top;
+        }
+
+        tbody tr:hover {
+            background: rgba(29, 78, 216, 0.06);
+        }
+
+        .hint {
+            margin-top: 12px;
+            color: var(--muted);
+            font-size: 0.86rem;
+        }
+
+        @media (max-width: 760px) {
+            .controls {
+                grid-template-columns: 1fr;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="shell">
+        <h1 class="title">AI Tools Query Engine</h1>
+        <p class="subtitle">Ask in natural language and get live database results from your FastAPI AI backend.</p>
+
+        <section class="panel">
+            <div class="controls">
+                <label class="field">
+                    <span class="label">Your Query</span>
+                    <input id="queryInput" type="text" placeholder="Ask something..." />
+                </label>
+                <button id="searchBtn" type="button">Search</button>
+            </div>
+
+            <div class="meta">
+                <label class="field">
+                    <span class="label">API Endpoint</span>
+                    <input id="endpointInput" type="text" />
+                </label>
+                <div id="status" class="status"></div>
+                <pre id="sqlBox" class="sql"></pre>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>id</th>
+                            <th>name</th>
+                            <th>category</th>
+                            <th>description</th>
+                            <th>popularity_score</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody">
+                        <tr>
+                            <td colspan="5">No results yet. Try: Top DevOps tools</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p class="hint">Tip: If this page is hosted separately, set API endpoint to your Cloud Run URL ending in /query.</p>
+        </section>
+    </main>
+
+    <script>
+        const queryInput = document.getElementById("queryInput");
+        const endpointInput = document.getElementById("endpointInput");
+        const searchBtn = document.getElementById("searchBtn");
+        const statusEl = document.getElementById("status");
+        const sqlBox = document.getElementById("sqlBox");
+        const resultsBody = document.getElementById("resultsBody");
+
+        endpointInput.value = window.location.origin + "/query";
+
+        function setStatus(text, kind) {
+            statusEl.textContent = text;
+            statusEl.className = "status" + (kind ? " " + kind : "");
+        }
+
+        function renderRows(rows) {
+            const sorted = [...rows].sort((a, b) => {
+                const left = Number(a.popularity_score ?? 0);
+                const right = Number(b.popularity_score ?? 0);
+                return right - left;
+            });
+
+            if (!sorted.length) {
+                resultsBody.innerHTML = "<tr><td colspan=\"5\">Query succeeded, but no rows matched.</td></tr>";
+                return;
+            }
+
+            resultsBody.innerHTML = "";
+            for (const row of sorted) {
+                const tr = document.createElement("tr");
+
+                const cols = [
+                    row.id,
+                    row.name,
+                    row.category,
+                    row.description,
+                    row.popularity_score,
+                ];
+
+                cols.forEach((val) => {
+                    const td = document.createElement("td");
+                    td.textContent = val == null ? "" : String(val);
+                    tr.appendChild(td);
+                });
+
+                resultsBody.appendChild(tr);
+            }
+        }
+
+        async function runQuery() {
+            const query = queryInput.value.trim();
+            const endpoint = endpointInput.value.trim();
+
+            if (!query) {
+                setStatus("Please enter a query first.", "error");
+                return;
+            }
+
+            if (!endpoint) {
+                setStatus("Please provide a valid API endpoint.", "error");
+                return;
+            }
+
+            searchBtn.disabled = true;
+            setStatus("Searching...", "loading");
+            sqlBox.style.display = "none";
+            sqlBox.textContent = "";
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ query }),
+                });
+
+                const payload = await response.json();
+
+                if (!response.ok) {
+                    const detail = typeof payload.detail === "string"
+                        ? payload.detail
+                        : JSON.stringify(payload.detail || payload);
+                    throw new Error(detail || "Request failed");
+                }
+
+                if (payload.sql) {
+                    sqlBox.textContent = "Generated SQL:\n" + payload.sql;
+                    sqlBox.style.display = "block";
+                }
+
+                renderRows(Array.isArray(payload.results) ? payload.results : []);
+                setStatus("Success. Results loaded.", "success");
+            } catch (err) {
+                setStatus("Error: " + (err.message || "Something went wrong."), "error");
+                resultsBody.innerHTML = "<tr><td colspan=\"5\">Unable to load results.</td></tr>";
+            } finally {
+                searchBtn.disabled = false;
+            }
+        }
+
+        searchBtn.addEventListener("click", runQuery);
+        queryInput.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                runQuery();
+            }
+        });
+    </script>
+</body>
+</html>

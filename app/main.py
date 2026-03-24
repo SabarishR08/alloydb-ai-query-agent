@@ -1,8 +1,11 @@
 import logging
+from pathlib import Path
 
 import psycopg2
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app.db import execute_query
@@ -10,6 +13,9 @@ from app.query_engine import generate_sql
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+BASE_DIR = Path(__file__).resolve().parents[1]
+FRONTEND_DIR = BASE_DIR / "frontend"
 
 app = FastAPI(
     title="AlloyDB AI Query Agent",
@@ -19,6 +25,17 @@ app = FastAPI(
     ),
     version="1.0.0",
 )
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+if FRONTEND_DIR.exists():
+    app.mount("/frontend", StaticFiles(directory=str(FRONTEND_DIR)), name="frontend")
 
 
 class QueryRequest(BaseModel):
@@ -33,6 +50,14 @@ class QueryRequest(BaseModel):
 class QueryResponse(BaseModel):
     sql: str = Field(..., description="The SQL query generated from the natural language input.")
     results: list[dict] = Field(..., description="Rows returned by the query.")
+
+
+@app.get("/", include_in_schema=False)
+def home():
+    index_file = FRONTEND_DIR / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
+    return {"message": "Frontend not found. Open /docs for API usage."}
 
 
 @app.get("/health", summary="Health check")
