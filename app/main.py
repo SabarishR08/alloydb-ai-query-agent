@@ -26,7 +26,7 @@ class QueryRequest(BaseModel):
         ...,
         min_length=1,
         description="Natural language question to be converted to SQL and executed.",
-        examples=["Show me the top 5 most expensive products"],
+        examples=["Top DevOps tools"],
     )
 
 
