@@ -149,6 +149,46 @@ Sample request body:
 
 - `POST /query`: accepts natural language and returns generated SQL + results
 
+## Submission Snapshot
+
+- Project: AlloyDB AI Query Agent
+- Status: Production-ready backend with deployable frontend
+- Cloud Run URL: REPLACE_WITH_YOUR_CLOUD_RUN_URL
+
+### Judge-Facing Summary
+
+This project turns plain-English questions into SQL using Gemini on Vertex AI, executes read-only queries against a PostgreSQL-compatible database (AlloyDB or Cloud SQL), and returns structured JSON results through a FastAPI API. It includes a custom dataset centered on AI tools and a responsive frontend for interactive testing.
+
+## Architecture Diagram
+
+```mermaid
+flowchart TD
+	A[User / Reviewer] --> B[Frontend UI]
+	B --> C[FastAPI Service on Cloud Run]
+	C --> D[Gemini on Vertex AI]
+	D --> C
+	C --> E[(AlloyDB or Cloud SQL PostgreSQL)]
+	E --> C
+	C --> B
+```
+
+## Demo Walkthrough Script
+
+1. Open the frontend URL and enter: Top DevOps tools.
+2. Show generated SQL returned by the API response.
+3. Highlight result ordering by popularity_score.
+4. Open API docs at /docs and run a second query: List vector databases.
+5. Show health endpoint at /health.
+
+For terminal-based demo calls, use scripts/demo.ps1.
+
+## Resume Bullets
+
+- Built an AI-powered natural language query engine using FastAPI, Vertex AI Gemini, and PostgreSQL-compatible AlloyDB/Cloud SQL.
+- Implemented prompt-driven SQL generation with read-only query enforcement and robust API error handling.
+- Designed a custom AI tools dataset and integrated end-to-end querying from frontend UI to cloud-hosted database.
+- Productionized deployment on Cloud Run with environment-based configuration and Cloud SQL socket connectivity.
+
 ## Cloud SQL + Cloud Run Deployment
 
 This path is useful for Track 3 when you want a clean managed deployment.
@@ -212,4 +252,13 @@ Notes:
 - Do not hardcode database credentials in source files.
 - Prefer Secret Manager for `DB_PASSWORD` in production.
 - The app automatically uses Cloud SQL Unix socket when `CLOUD_SQL_CONNECTION_NAME` is set.
+
+## Post-Deploy Validation
+
+After deploy, verify:
+
+1. `/health` returns status ok.
+2. `/docs` loads and can execute POST `/query`.
+3. Frontend root `/` can query and render table results.
+4. SQL is generated and returned in API response.
 
