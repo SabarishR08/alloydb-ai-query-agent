@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 GCP_PROJECT = os.getenv("GCP_PROJECT", "")
 GCP_LOCATION = os.getenv("GCP_LOCATION", "us-central1")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-pro")
+USE_GEMINI = os.getenv("USE_GEMINI", "true").lower() == "true"
 
 # Schema description injected into the prompt so Gemini knows the table structure.
 DB_SCHEMA = """
@@ -37,13 +38,74 @@ SYSTEM_PROMPT = (
 )
 
 # Initialize Vertex AI and build the model once at module load time.
-if GCP_PROJECT:
-    vertexai.init(project=GCP_PROJECT, location=GCP_LOCATION)
+_model = None
+if USE_GEMINI:
+    if GCP_PROJECT:
+        vertexai.init(project=GCP_PROJECT, location=GCP_LOCATION)
 
-_model = GenerativeModel(
-    model_name=GEMINI_MODEL,
-    system_instruction=SYSTEM_PROMPT,
-)
+    _model = GenerativeModel(
+        model_name=GEMINI_MODEL,
+        system_instruction=SYSTEM_PROMPT,
+    )
+
+
+def _escape_like(value: str) -> str:
+    return value.replace("'", "''")
+
+
+def _fallback_sql(natural_language_query: str) -> str:
+    """Best-effort local SQL generator used when Gemini is unavailable."""
+    q = natural_language_query.lower().strip()
+    escaped = _escape_like(natural_language_query.strip())
+
+    category_map = {
+        "backend": "Backend",
+        "vector": "Vector DB",
+        "vector db": "Vector DB",
+        "devops": "DevOps",
+        "llm api": "LLM API",
+        "api": "LLM API",
+        "framework": "LLM Framework",
+        "ml": "ML Platform",
+    }
+
+    category = None
+    for key, value in category_map.items():
+        if key in q:
+            category = value
+            break
+
+    top_intent = any(token in q for token in ["top", "best", "most popular", "popular"])
+
+    if category and top_intent:
+        return (
+            "SELECT id, name, category, description, popularity_score "
+            f"FROM ai_tools WHERE category ILIKE '%{_escape_like(category)}%' "
+            "ORDER BY popularity_score DESC LIMIT 10;"
+        )
+
+    if category:
+        return (
+            "SELECT id, name, category, description, popularity_score "
+            f"FROM ai_tools WHERE category ILIKE '%{_escape_like(category)}%' "
+            "ORDER BY popularity_score DESC;"
+        )
+
+    if top_intent:
+        return (
+            "SELECT id, name, category, description, popularity_score "
+            "FROM ai_tools ORDER BY popularity_score DESC LIMIT 10;"
+        )
+
+    if escaped:
+        return (
+            "SELECT id, name, category, description, popularity_score "
+            "FROM ai_tools "
+            f"WHERE name ILIKE '%{escaped}%' OR category ILIKE '%{escaped}%' OR description ILIKE '%{escaped}%' "
+            "ORDER BY popularity_score DESC LIMIT 20;"
+        )
+
+    return "SELECT id, name, category, description, popularity_score FROM ai_tools ORDER BY popularity_score DESC LIMIT 20;"
 
 
 def _extract_sql(text: str) -> str:
@@ -68,14 +130,24 @@ def generate_sql(natural_language_query: str) -> str:
         ValueError: If the generated query is not a SELECT statement.
         Exception: On Vertex AI / Gemini errors.
     """
-    response = _model.generate_content(natural_language_query)
-    sql = _extract_sql(response.text)
+    if not USE_GEMINI:
+        sql = _fallback_sql(natural_language_query)
+        logger.info("Gemini disabled by USE_GEMINI=false. Using fallback SQL: %s", sql)
+        return sql
 
-    logger.info("Generated SQL: %s", sql)
+    try:
+        response = _model.generate_content(natural_language_query)
+        sql = _extract_sql(response.text)
 
-    if not sql.strip().upper().startswith("SELECT"):
-        raise ValueError(
-            f"Model returned a non-SELECT statement, which is not allowed: {sql}"
-        )
+        logger.info("Generated SQL via Gemini: %s", sql)
 
-    return sql
+        if not sql.strip().upper().startswith("SELECT"):
+            raise ValueError(
+                f"Model returned a non-SELECT statement, which is not allowed: {sql}"
+            )
+
+        return sql
+    except Exception:
+        sql = _fallback_sql(natural_language_query)
+        logger.exception("Gemini SQL generation failed. Using fallback SQL: %s", sql)
+        return sql
