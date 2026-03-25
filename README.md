@@ -4,7 +4,24 @@ AI-powered natural language query system using AlloyDB, Gemini, and FastAPI. Con
 
 ## Architecture
 
-User query -> FastAPI -> Gemini (Vertex AI) -> SQL -> AlloyDB -> JSON results
+User query → FastAPI → Vertex AI Gemini (with local fallback) → SQL → Cloud SQL PostgreSQL → JSON results
+
+## Quick Start: Test Live Service
+
+The system is deployed and operational. Test it immediately:
+
+```powershell
+# Health check
+curl https://alloydb-ai-query-agent-34daigl7xa-el.a.run.app/health
+
+# Query examples (visit in browser or use curl)
+# https://alloydb-ai-query-agent-34daigl7xa-el.a.run.app/
+```
+
+Or run the demo script:
+```powershell
+.\scripts\demo.ps1 -BaseUrl "https://alloydb-ai-query-agent-34daigl7xa-el.a.run.app"
+```
 
 ## Project Structure
 
@@ -145,19 +162,52 @@ Sample request body:
 - Empty results
 	- Re-run `data/seed.sql` against the correct database.
 
-## API Endpoint
+## API Endpoints
 
-- `POST /query`: accepts natural language and returns generated SQL + results
+### POST /query
+Accepts a natural language query string and returns the generated SQL statement along with result rows.
+
+**Request Body:**
+```json
+{
+	"query": "Top DevOps tools"
+}
+```
+
+**Response:**
+```json
+{
+	"sql": "SELECT id, name, category, description, popularity_score FROM ai_tools WHERE category ILIKE '%DevOps%' ORDER BY popularity_score DESC LIMIT 10",
+	"results": [
+		{
+			"id": 1,
+			"name": "Docker",
+			"category": "DevOps",
+			"description": "Container platform for application deployment",
+			"popularity_score": 93
+		}
+	]
+}
+```
+
+### GET /health
+Liveness probe endpoint for monitoring service health.
+
+**Response:**
+```json
+{"status": "ok"}
+```
 
 ## Submission Snapshot
 
-- Project: AlloyDB AI Query Agent
-- Status: Production-ready backend with deployable frontend
-- Cloud Run URL: https://alloydb-ai-query-agent-130153985798.asia-south1.run.app
+- **Project**: AlloyDB AI Query Agent
+- **Status**: Production-ready with full implementation
+- **Live Endpoint**: https://alloydb-ai-query-agent-34daigl7xa-el.a.run.app
+- **Documentation**: See `IMPLEMENTATION_PROGRESS.txt` for detailed implementation status
 
-### Judge-Facing Summary
+### Project Overview
 
-This project turns plain-English questions into SQL using Gemini on Vertex AI, executes read-only queries against a PostgreSQL-compatible database (AlloyDB or Cloud SQL), and returns structured JSON results through a FastAPI API. It includes a custom dataset centered on AI tools and a responsive frontend for interactive testing.
+This system converts natural language queries into SQL using Vertex AI Gemini, executes read-only queries against PostgreSQL on Cloud SQL, and returns structured results through a REST API. The solution includes a custom AI tools dataset, a responsive web frontend, and resilient fallback mechanisms. All components are deployed and operational on Google Cloud Run with Cloud SQL backend storage.
 
 ## Architecture Diagram
 
@@ -182,12 +232,13 @@ flowchart TD
 
 For terminal-based demo calls, use scripts/demo.ps1.
 
-## Resume Bullets
+## Professional Accomplishments
 
-- Built an AI-powered natural language query engine using FastAPI, Vertex AI Gemini, and PostgreSQL-compatible AlloyDB/Cloud SQL.
-- Implemented prompt-driven SQL generation with read-only query enforcement and robust API error handling.
-- Designed a custom AI tools dataset and integrated end-to-end querying from frontend UI to cloud-hosted database.
-- Productionized deployment on Cloud Run with environment-based configuration and Cloud SQL socket connectivity.
+- Engineered an end-to-end AI-powered natural language query system leveraging FastAPI, Vertex AI Gemini, and Cloud SQL with PostgreSQL backend.
+- Implemented dual-path SQL generation architecture: primary path via Gemini LLM with context-aware prompting; secondary fallback with pattern-matching and deterministic query construction for reliability.
+- Designed and deployed a custom AI tools dataset containing 10 entries across 6 categories with popularity-based ranking for realistic query scenarios.
+- Productionized the solution on Google Cloud Run with automatic Cloud SQL Unix socket attachment, environment-based configuration management, and comprehensive error handling.
+- Delivered a fully responsive HTML5 frontend enabling interactive query execution, client-side result sorting, and real-time API integration without external framework dependencies.
 
 ## Cloud SQL + Cloud Run Deployment
 
